@@ -1,7 +1,7 @@
 ---
 title: 拍摄视频
-date: 2022-03-27 09:00:00 +0800
-categories: [notes]
+date: 2022-03-23 09:00:00 +0800
+categories: [摄影]
 tags: [video]
 ---
 
