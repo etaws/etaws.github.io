@@ -20,4 +20,3 @@ tags: [video]
   * Zoom, In or Out（焦距拉伸）。注意和【镜头推拉】的区别。
   * Push In or Pull Out（推拉）
     * Push In：表达情绪的联接
-
