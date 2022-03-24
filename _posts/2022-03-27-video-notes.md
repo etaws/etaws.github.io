@@ -2,7 +2,7 @@
 title: 拍摄视频
 date: 2022-03-27 09:00:00 +0800
 categories: [摄影]
-tags: [视频]
+tags: [video]
 ---
 
 ## 一. 基本镜头运动
