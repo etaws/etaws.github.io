@@ -1,11 +1,9 @@
 ---
 title: 制作咖啡
 date: 2022-03-24 19:04:00 +0800
-categories: [notes]
-tags: [咖啡]
+categories: [咖啡]
+tags: [coffee]
 ---
-
-# 制作咖啡
 
 ## 一. 利用「聪明杯」制作咖啡
 
