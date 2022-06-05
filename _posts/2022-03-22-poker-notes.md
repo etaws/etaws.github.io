@@ -27,9 +27,11 @@ tags: [poker]
 * Polarized Ranges Consist of Strong and Weak Hands
   * 翻译：极化范围只由强牌和弱牌组成。不包含中等牌，要么「坚果」要么「空气」（nut or air）
   * 极化范围时，意味这主动下注（bet or raise）。越极化，下注额越大
+
 * Condensed Ranges Consist of Medium-Strength Hands
   * 翻译：紧缩范围由中等牌组成
   * 紧缩范围中的牌会输给强牌，赢弱牌。所以也就做抓诈范围（bluff-catching range）
+
 * The Clairvoyance Game：一个用来展示极化范围和紧缩范围理论的 Toy Game（简化游戏）。游戏规则如下：
   * 3 张牌 A/K/Q 发给 2 个玩家：OOP（Out of Position）和 IP（In Position）
   * OOP 拿到的牌永远是 K；IP 拿到的牌要么是 A，要么是 Q
@@ -43,12 +45,54 @@ tags: [poker]
   * 每个玩家在面对对方的 Bet 时，可以选择跟注（call），或者弃牌（fold）；但不能加注（raise）
     * 如果选择 call，翻牌比大小，赢家获得池子中的所有筹码
     * 如果选择 fold，对方获得池子中的所有筹码
+
 * Clairvoyance Game 的解决：
   * 双方的 Equity 都是 50%
   * 但如果双方达成了均衡（Equilibrium），IP 的 EV 大于 OOP 的 EV（也就是说，IP 可以赢更多的钱）
     * IP 能赢钱的原因在于他的范围是「极化范围」，而 OOP 的范围是「紧缩范围」
   * OOP 首先的行动策略（OOP 的牌永远是 K）：check
   * 当 OOP 首先的行动是 check 时，IP 的行动策略是「混合策略」。其整体的 bluff 频率为 1/4，平均 4 次下注中有 3 次是 A，1 次是 Q。也就是：
-    * OOP 的牌是 A 的话，总是 bet
-    * OOP 的牌是 Q 的话，摸到 3 次 Q，随机 bet 其中的 1 次
+    * IP 的牌是 A 的话，总是 bet
+    * IP 的牌是 Q 的话，摸到 3 次 Q，随机 bet 其中的 1 次
   * 当 IP 的行动是 bet 时，OOP 的行动策略是「混合策略」。其整体的跟注频率是 2/3，平均 3 次里面跟注 2 次
+
+* Clairvoyance Game 的变种一。其他方面和 Clairvoyance Game 一样，除了 2 个变化点：
+  * OOP 不再只能拿到 K，而是 OOP 和 IP 可以随机获得 A，K，Q 中的一张
+  * OOP 最先一次只能 check
+
+* Clairvoyance Game 变种一的解决：
+  * 双方的 Equity 都是 50%
+  * IP 拿到 K 时的策略是 check
+  * IP 拿到 A 和 Q 的行动策略是「混合策略」。其整体的 bluff 频率为 1/4，平均 4 次下注中有 3 次是 A，1 次是 Q。也就是：
+    * IP 的牌是 A 的话，总是 bet
+    * IP 的牌是 Q 的话，摸到 3 次 Q，随机 bet 其中的 1 次
+
+分析如下：
+
+> 当 OOP 面对 IP 的 bet 时，OOP 的跟注范围是：{A, K}，同时其跟注频率是 2/3
+> 而如果 OOP 只用 A 跟注，那么这个策略的跟注频率只有 1/2，不满足 2/3 的要求。所以 OOP 需要用一定比例的 K 来跟注
+> 既然 OOP 有用 K 来跟注的概率，IP 就有用 Q 来 bluff 的空间；而 bluff 频率和 Clairvoyance Game 一致：摸到 3 次 Q，随机 bet 其中的 1 次（bet 所有的 A）
+
+## 附
+
+### 1. 规则解析
+
+* **摊牌顺序**：河牌圈所有人完成下注后的「摊牌顺序」（Order for revealing hands when showdown）：Players are encouraged to show their cards promptly to avoid delaying  the game, but if there is any reluctance, they are required to show them in clockwise order, beginning with the last player who bet or raised in the last betting round, or with the player who began the last betting  round if everyone checked
+  * 翻译：最好是所有的 Player 都主动摊牌比大小，节约时间；但如果有人不愿意先摊牌的话，可以按顺时针顺序摊牌，而第一个摊牌的人是：在河牌圈最后一个 bet 或 raise 的 Player；但如果河牌圈所有人都 check，那么从河牌圈第一个需要行动的人开始摊牌
+  * 不过如果你确认你拿到的是「坚果」牌，最好是主动快速亮牌（出于礼貌），不然对手可能会不爽
+
+* **有效加注**:「有效加注」就是你选择加注时的最少需要投入的筹码量。其规则如下：
+  * 如果是本轮第一个下注的玩家，那么「有效下注」至少是 1 个大盲
+  * 如果本轮有其他玩家下注过了，那么「有效加注」的增量不得小于前一个有效下注的增量
+
+例如：
+
+> 本轮下注顺序是这样的：
+> A 玩家： 2bb
+> B 玩家： 5bb
+> C 玩家：这个时候的「有效加注」就至少是 8bb，因为 B 玩家 的下注的增量是 3bb，所以 C 玩家也至少要增加 3bb
+>
+> 如果这个时候 C 玩家只剩 7bb，那么他可以做 Allin。
+> 在 C 玩家 Allin 之后，其他人弃牌到 A 玩家这里，A 玩家是可以继续做 raise 的，此时，A 玩家最少需要 raise 到（7bb + 3bb）= 10bb，因为 A 玩家下注之后 B 玩家进行过有效下注；
+>
+> 但是如果 A 玩家选择 call，那么 B 玩家不能继续下注了，因为 B 玩家下注之后只有 C 玩家进行过一个无效的下注，此时，B 玩家要么 call，要么 fold；
