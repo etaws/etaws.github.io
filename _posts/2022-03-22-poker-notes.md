@@ -5,7 +5,7 @@ categories: [扑克]
 tags: [poker]
 ---
 
-## 1. 名词解释
+## 一. 名词解释
 
 * 策略（Strategy）
   * 在每种给定的条件下，玩家对应的采用对应的行动
@@ -22,7 +22,7 @@ tags: [poker]
   * 如果对一个玩家来说，从几个策略中选择具体哪一个，EV 都是一样的，那么这几个策略对这个玩家来说是平衡的
   * 例如，我【下注】以后，对手玩家无论是【跟注】还是【弃牌】的 EV 都是一样的，那么我的这个【下注】对手玩家来说是【平衡】（Indifference）的
 
-## 2. 极化范围 vs. 紧缩范围
+## 二. 极化范围 vs. 紧缩范围
 
 * Polarized Ranges Consist of Strong and Weak Hands
   * 翻译：极化范围只由强牌和弱牌组成。不包含中等牌，要么「坚果」要么「空气」（nut or air）
@@ -73,17 +73,32 @@ tags: [poker]
 > 而如果 OOP 只用 A 跟注，那么这个策略的跟注频率只有 1/2，不满足 2/3 的要求。所以 OOP 需要用一定比例的 K 来跟注
 > 既然 OOP 有用 K 来跟注的概率，IP 就有用 Q 来 bluff 的空间；而 bluff 频率和 Clairvoyance Game 一致：摸到 3 次 Q，随机 bet 其中的 1 次（bet 所有的 A）
 
-## 附
+## 三. 简单数学
 
-### 1. 规则解析
+* Odds：如果胜率是 33%（1/3），那么对应的 Odds 是：1:2（3 次里面，赢 1 次，输 2 次）
+* Pot odds：底池里面有 7500，对手下注 2500；那么我需要投入 2500 去争取获得 12500；那么当前的 Pot odds 是：2500/12500 = 1/5（20%）
+* Odds & Pot odds：如果 Pot odds 比当前牌面的 Odds 划算，那么此时下注的话，是「正 EV」的动作；否则，是「负 EV」的动作
+* Implied odds：计算 Pot odds 时只考虑当前下注轮次；但由于 Poker 不止一轮下注，所以如果预计能在未来的轮次能赢得更多，可以在计算 Pot odds 时把未来能赢到的钱加进来得到：Implied odds
+* Outs 数：Outs 就是在等的牌，一旦真的等到 Outs 来了以后就赢了。Outs 不止一张，需要计算当前的 Outs 数，从而计算出「成牌概率」
+  * 2 & 4 法则
 
-* **摊牌顺序**：河牌圈所有人完成下注后的「摊牌顺序」（Order for revealing hands when showdown）：Players are encouraged to show their cards promptly to avoid delaying  the game, but if there is any reluctance, they are required to show them in clockwise order, beginning with the last player who bet or raised in the last betting round, or with the player who began the last betting  round if everyone checked
-  * 翻译：最好是所有的 Player 都主动摊牌比大小，节约时间；但如果有人不愿意先摊牌的话，可以按顺时针顺序摊牌，而第一个摊牌的人是：在河牌圈最后一个 bet 或 raise 的 Player；但如果河牌圈所有人都 check，那么从河牌圈第一个需要行动的人开始摊牌
-  * 不过如果你确认你拿到的是「坚果」牌，最好是主动快速亮牌（出于礼貌），不然对手可能会不爽
+## 四. 规则解析
 
-* **有效加注**:「有效加注」就是你选择加注时的最少需要投入的筹码量。其规则如下：
-  * 如果是本轮第一个下注的玩家，那么「有效下注」至少是 1 个大盲
-  * 如果本轮有其他玩家下注过了，那么「有效加注」的增量不得小于前一个有效下注的增量
+### 1. 摊牌顺序
+
+**摊牌顺序**：河牌圈所有人完成下注后的「摊牌顺序」（Order for revealing hands when showdown）
+
+* Players are encouraged to show their cards promptly to avoid delaying  the game, but if there is any reluctance, they are required to show them in clockwise order, beginning with the last player who bet or raised in the last betting round, or with the player who began the last betting  round if everyone checked
+
+* 翻译：最好是所有的 Player 都主动摊牌比大小，节约时间；但如果有人不愿意先摊牌的话，可以按顺时针顺序摊牌，而第一个摊牌的人是：在河牌圈最后一个 bet 或 raise 的 Player；但如果河牌圈所有人都 check，那么从河牌圈第一个需要行动的人开始摊牌
+* 不过如果你确认你拿到的是「坚果」牌，最好是主动快速亮牌（出于礼貌），不然对手可能会不爽
+
+### 2. 有效加注
+
+**有效加注**:「有效加注」就是你选择加注时的最少需要投入的筹码量。其规则如下：
+
+* 如果是本轮第一个下注的玩家，那么「有效下注」至少是 1 个大盲
+* 如果本轮有其他玩家下注过了，那么「有效加注」的增量不得小于前一个有效下注的增量
 
 例如：
 
