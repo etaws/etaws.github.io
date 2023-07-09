@@ -1,0 +1,365 @@
+<!DOCTYPE html><html lang="zh-CN" ><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><meta name="generator" content="Jekyll v4.2.2" /><meta property="og:title" content="Pin" /><meta property="og:locale" content="zh_CN" /><meta name="description" content="Pin 机制最重要的用途就是用来保证 Rust 异步机制的安全。" /><meta property="og:description" content="Pin 机制最重要的用途就是用来保证 Rust 异步机制的安全。" /><link rel="canonical" href="https://etaws.github.io/posts/pin-notes/" /><meta property="og:url" content="https://etaws.github.io/posts/pin-notes/" /><meta property="og:site_name" content="Etaws" /><meta property="og:type" content="article" /><meta property="article:published_time" content="2022-03-25T07:00:00+08:00" /><meta name="twitter:card" content="summary" /><meta property="twitter:title" content="Pin" /><meta name="twitter:site" content="@twitter_username" /> <script type="application/ld+json"> {"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2022-03-25T07:34:22+08:00","datePublished":"2022-03-25T07:00:00+08:00","description":"Pin 机制最重要的用途就是用来保证 Rust 异步机制的安全。","headline":"Pin","mainEntityOfPage":{"@type":"WebPage","@id":"https://etaws.github.io/posts/pin-notes/"},"url":"https://etaws.github.io/posts/pin-notes/"}</script><title>Pin | Etaws</title><link rel="apple-touch-icon" sizes="180x180" href="/assets/img/favicons/apple-touch-icon.png"><link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicons/favicon-32x32.png"><link rel="icon" type="image/png" sizes="16x16" href="/assets/img/favicons/favicon-16x16.png"><link rel="manifest" href="/assets/img/favicons/site.webmanifest"><link rel="shortcut icon" href="/assets/img/favicons/favicon.ico"><meta name="apple-mobile-web-app-title" content="Etaws"><meta name="application-name" content="Etaws"><meta name="msapplication-TileColor" content="#da532c"><meta name="msapplication-config" content="/assets/img/favicons/browserconfig.xml"><meta name="theme-color" content="#ffffff"><link rel="preconnect" href="https://fonts.googleapis.com" ><link rel="dns-prefetch" href="https://fonts.googleapis.com" ><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="dns-prefetch" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://fonts.googleapis.com" ><link rel="dns-prefetch" href="https://fonts.googleapis.com" ><link rel="preconnect" href="https://cdn.jsdelivr.net" ><link rel="dns-prefetch" href="https://cdn.jsdelivr.net" ><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato&family=Source+Sans+Pro:wght@400;600;700;900&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/css/bootstrap.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.11.2/css/all.min.css"><link rel="stylesheet" href="/assets/css/style.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@1.0.1/dist/bootstrap-toc.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/magnific-popup@1/dist/magnific-popup.min.css"> <script src="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script> <script type="text/javascript"> class ModeToggle { static get MODE_KEY() { return "mode"; } static get MODE_ATTR() { return "data-mode"; } static get DARK_MODE() { return "dark"; } static get LIGHT_MODE() { return "light"; } static get ID() { return "mode-toggle"; } constructor() { if (this.hasMode) { if (this.isDarkMode) { if (!this.isSysDarkPrefer) { this.setDark(); } } else { if (this.isSysDarkPrefer) { this.setLight(); } } } let self = this; /* always follow the system prefers */ this.sysDarkPrefers.addEventListener("change", () => { if (self.hasMode) { if (self.isDarkMode) { if (!self.isSysDarkPrefer) { self.setDark(); } } else { if (self.isSysDarkPrefer) { self.setLight(); } } self.clearMode(); } self.notify(); }); } /* constructor() */ get sysDarkPrefers() { return window.matchMedia("(prefers-color-scheme: dark)"); } get isSysDarkPrefer() { return this.sysDarkPrefers.matches; } get isDarkMode() { return this.mode === ModeToggle.DARK_MODE; } get isLightMode() { return this.mode === ModeToggle.LIGHT_MODE; } get hasMode() { return this.mode != null; } get mode() { return sessionStorage.getItem(ModeToggle.MODE_KEY); } /* get the current mode on screen */ get modeStatus() { if (this.isDarkMode || (!this.hasMode && this.isSysDarkPrefer)) { return ModeToggle.DARK_MODE; } else { return ModeToggle.LIGHT_MODE; } } setDark() { $('html').attr(ModeToggle.MODE_ATTR, ModeToggle.DARK_MODE); sessionStorage.setItem(ModeToggle.MODE_KEY, ModeToggle.DARK_MODE); } setLight() { $('html').attr(ModeToggle.MODE_ATTR, ModeToggle.LIGHT_MODE); sessionStorage.setItem(ModeToggle.MODE_KEY, ModeToggle.LIGHT_MODE); } clearMode() { $('html').removeAttr(ModeToggle.MODE_ATTR); sessionStorage.removeItem(ModeToggle.MODE_KEY); } /* Notify another plugins that the theme mode has changed */ notify() { window.postMessage({ direction: ModeToggle.ID, message: this.modeStatus }, "*"); } } /* ModeToggle */ const toggle = new ModeToggle(); function flipMode() { if (toggle.hasMode) { if (toggle.isSysDarkPrefer) { if (toggle.isLightMode) { toggle.clearMode(); } else { toggle.setLight(); } } else { if (toggle.isDarkMode) { toggle.clearMode(); } else { toggle.setDark(); } } } else { if (toggle.isSysDarkPrefer) { toggle.setLight(); } else { toggle.setDark(); } } toggle.notify(); } /* flipMode() */ </script><body data-spy="scroll" data-target="#toc" data-topbar-visible="true"><div id="sidebar" class="d-flex flex-column align-items-end"><div class="profile-wrapper text-center"><div id="avatar"> <a href="/" alt="avatar" class="mx-auto"> <img src=" /assets/img/favicons/android-chrome-512x512.png " alt="avatar" onerror="this.style.display='none'"> </a></div><div class="site-title mt-3"> <a href="/">Etaws</a></div><div class="site-subtitle font-italic">Know nothing</div></div><ul class="w-100"><li class="nav-item"> <a href="/" class="nav-link"> <i class="fa-fw fas fa-home ml-xl-3 mr-xl-3 unloaded"></i> <span>首页</span> </a><li class="nav-item"> <a href="/categories/" class="nav-link"> <i class="fa-fw fas fa-stream ml-xl-3 mr-xl-3 unloaded"></i> <span>分类</span> </a><li class="nav-item"> <a href="/tags/" class="nav-link"> <i class="fa-fw fas fa-tag ml-xl-3 mr-xl-3 unloaded"></i> <span>标签</span> </a><li class="nav-item"> <a href="/archives/" class="nav-link"> <i class="fa-fw fas fa-archive ml-xl-3 mr-xl-3 unloaded"></i> <span>归档</span> </a><li class="nav-item"> <a href="/about/" class="nav-link"> <i class="fa-fw fas fa-info-circle ml-xl-3 mr-xl-3 unloaded"></i> <span>关于</span> </a></ul><div class="sidebar-bottom mt-auto d-flex flex-wrap justify-content-center align-items-center"> <button class="mode-toggle btn" aria-label="Switch Mode"> <i class="fas fa-adjust"></i> </button> <span class="icon-border"></span> <a href="https://github.com/etaws" aria-label="github" target="_blank" rel="noopener"> <i class="fab fa-github"></i> </a> <a href="https://twitter.com/twitter_username" aria-label="twitter" target="_blank" rel="noopener"> <i class="fab fa-twitter"></i> </a> <a href=" javascript:location.href = 'mailto:' + ['etawsz','gmail.com'].join('@')" aria-label="email" > <i class="fas fa-envelope"></i> </a> <a href="/feed.xml" aria-label="rss" > <i class="fas fa-rss"></i> </a></div></div><div id="topbar-wrapper" class="row justify-content-center"><div id="topbar" class="col-11 d-flex h-100 align-items-center justify-content-between"> <span id="breadcrumb"> <span> <a href="/"> 首页 </a> </span> <span>Pin</span> </span> <i id="sidebar-trigger" class="fas fa-bars fa-fw"></i><div id="topbar-title"> 文章</div><i id="search-trigger" class="fas fa-search fa-fw"></i> <span id="search-wrapper" class="align-items-center"> <i class="fas fa-search fa-fw"></i> <input class="form-control" id="search-input" type="search" aria-label="search" autocomplete="off" placeholder="搜索..."> </span> <span id="search-cancel" >取消</span></div></div><div id="main-wrapper"><div id="main"><div class="row"><div id="core-wrapper" class="col-12 col-lg-11 col-xl-8"><div class="post pl-1 pr-1 pl-sm-2 pr-sm-2 pl-md-4 pr-md-4"><h1 data-toc-skip>Pin</h1><div class="post-meta text-muted"><div> 作者 <em> <a href="https://github.com/etaws">etaws</a> </em></div><div class="d-flex"><div> <span> 发表于 <em class="timeago" data-ts="1648162800" data-toggle="tooltip" data-placement="bottom" data-tooltip-df="llll" > 2022-03-25 </em> </span> <span> 更新于 <em class="timeago" data-ts="1648164862" data-toggle="tooltip" data-placement="bottom" data-tooltip-df="llll" > 2022-03-25 </em> </span> <span class="readtime" data-toggle="tooltip" data-placement="bottom" title="3780 字"> <em>21 分钟</em>阅读</span></div></div></div><div class="post-content"><p>Pin 机制最重要的用途就是用来保证 Rust 异步机制的安全。</p><p>本文深入介绍 <strong>Pin</strong> 的细节。</p><p><strong>注意</strong>：<em>本文面向有 Rust 基础，学习过 Rust 指针的用法，Rust 异步的用法，但对 Pin 机制不了解的读者。</em></p><h2 id="一-可移动"><span class="mr-2">一. 可移动</span><a href="#一-可移动" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2></h2><p>进入本节之前，对 <strong>【move】</strong> 的概念进行回顾：</p><ul><li>「变量」（<strong>variable</strong>）拥有「值」（<strong>value</strong>）；对复合数据结构，所有权可以是「树状结构」<li><strong>move</strong>：把「值」的所有权转移给另外一个「变量」（owner）（类似 C 语言中的「浅拷贝」）<ul><li>赋值（=），传递「函数参数」，返回「函数返回值」都会发生 move</ul><li>一旦某个「变量」的所有权转移（move）走了以后，该「变量」失效，不能再使用这个「变量」<ul><li>例如：在【函数】和【闭包】中，在入参是 move 的场景（而不是 borrow 的场景），进入函数后，参数和返回值的 owner 关系发生改变，原先的变量不再有效</ul><li>不过有<strong>例外</strong>的情况：可以通过实现 Copy trait 把默认的 move 改成 copy（复制，所谓的深拷贝）<ul><li>Rust 中，一些简单类型，默认实现了 Copy trait，这些类型统称为 <strong>Copy Type</strong><li>Copy trait 继承了 Clone trait</ul></ul><p>用一个例子再详解一下 move 的细节：</p><div class="language-rust highlighter-rouge"><div class="code-header"> <span data-label-text="Rust"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+</pre><td class="rouge-code"><pre><span class="nd">#![allow(unused)]</span>
+
+<span class="k">fn</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// s1 (变量) 是 String `hello` (值) 的 owner</span>
+    <span class="c1">// 底层的实现大概是：`hello` 被存放在分配在 heap 上的空间</span>
+    <span class="c1">// s1 是个肥指针：记录了「字符串长度」，「字符串存放空间地址」等信息</span>
+    <span class="k">let</span> <span class="n">s1</span> <span class="o">=</span> <span class="nn">String</span><span class="p">::</span><span class="nf">from</span><span class="p">(</span><span class="s">"hello"</span><span class="p">);</span>
+
+    <span class="c1">// 进行 move：s1 记录的信息被 copy 给了 s2（「字符串长度」，「字符串存放空间地址」）</span>
+    <span class="c1">// 但字符串内容（`hello`）本身地址不会变动</span>
+    <span class="c1">// 移动以后可以使用 s2 完全没有问题</span>
+    <span class="c1">// 这是因为 String `hello` 本身的地址没有变化，可以通过 s2 被安全的继续使用</span>
+    <span class="k">let</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">s1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></table></code></div></div><p>上面例子中的 s1 move 到 s2 具体动作如下图（从 TRPL 书摘录）所示：</p><p><img data-src="https://doc.rust-lang.org/stable/book/img/trpl04-02.svg" alt="move" width="300" data-proofer-ignore></p><p>就上面的例子来说，String 类型是一个「可移动」（movable）类型。</p><blockquote><p><strong>可移动</strong>（movable）：所谓一个类型「可移动」，是指一旦拿到这个类型的「值」的 ownership 或 &amp;mut（独占指针），并进行 move 操作，而不会引起问题（不会发生<strong>未定义行为</strong>）</p></blockquote><p>正常来说，就像上面的 String 类型，Rust 中的所有类型都应该是「可移动」的。</p><p>但有例外的场景，某些类型被移动后，会有问题。比如对 <strong>Self-Referential Structs</strong>（自引用 structs）类型进行 move 就可能引起问题（发生<strong>未定义行为</strong>）。</p><p>举个 <strong>Self-Referential Structs</strong> 的例子（一个字段指向另外一个字段）：</p><div class="language-rust highlighter-rouge"><div class="code-header"> <span data-label-text="Rust"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre><td class="rouge-code"><pre><span class="k">struct</span> <span class="n">Test</span> <span class="p">{</span>
+    <span class="n">a</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span>
+    <span class="n">b</span><span class="p">:</span> <span class="o">*</span><span class="k">const</span> <span class="nb">String</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></table></code></div></div><p>自引用 structs 的 move 问题的细节请参考：<a href="https://rust-lang.github.io/async-book/04_pinning/01_chapter.html#pinning-in-detail">Pinning in Detail</a>，看了它里面的图就一目了然了：</p><p><img data-src="https://rust-lang.github.io/async-book/assets/swap_problem.jpg" alt="async" width="500" data-proofer-ignore></p><p>总之 <strong>Self-Referential Structs</strong> 可能会引起 move 后的指针无效问题。该问题可能的解决方法有：</p><ul><li>每次 move 时，修改指针指向的地址；但这个方法会影响运行时的性能，代价较高<li>指针不储存绝对地址，只储存偏移量；这样需要编译器针对 <strong>Self-Referential Structs</strong> 做专门的处理，编译器的实现会比较复杂<li>Rust 采用 <strong>Pin</strong> 机制来解决问题：开发者负责把不能被 move 的类型标记出来；利用类型系统对这些被标记了的类型进行限制：使得没有办法对这些类型做 move 动作<ul><li>运行时付出的代价为 0，不影响性能<li>代价就是开发者需要学习 Pin 的用法</ul></ul><h2 id="二-pin-的定义"><span class="mr-2">二. Pin 的定义</span><a href="#二-pin-的定义" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2></h2><blockquote><p><strong>核心理念</strong>：</p><p>要限制一个类型 T 不能被 move，也就是要对这个类型 T 的访问进行限制：只要不能拿到到这个类型 T 的 ownership 或者 &amp;mut T（独占指针），也就不能对这个类型 T 做 move 操作。</p><p>在 Pin 机制中，只要利用 Pin 把这个类型 T 包起来（或者说屏蔽起来）就能实现这个限制效果。</p></blockquote><p>Pin 的定义：</p><div class="language-rust highlighter-rouge"><div class="code-header"> <span data-label-text="Rust"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre><td class="rouge-code"><pre><span class="c1">// 一个包了指针的 struct</span>
+<span class="k">pub</span> <span class="k">struct</span> <span class="nb">Pin</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="n">pointer</span><span class="p">:</span> <span class="n">P</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></table></code></div></div><p>其中：</p><ul><li>Pin <strong>自己是一个指针</strong>，Pin 本身实现了 Deref 和 DerefMut，<li>P <strong>必须是一个指针</strong>，也就是实现了 Deref 或 DerefMut 的类型。例如：Box&lt;T&gt;</ul><p>怎么利用 Pin 把需要限制的类型 T 包起来（屏蔽起来）？</p><ul><li>因为 P 只能包一个指针，所以先要构建一个指向 T 的指针 P。可以构建 2 种指针：<ul><li><strong>&amp;mut T</strong>：「<strong>可变引用</strong>」实际上就是 T 的「独占指针」<li><strong>Box&lt;T&gt;</strong>：使用智能指针 <strong>Box</strong></ul><li>然后再用 Pin 把构建好的指针类型 P 包起来。既然有 2 种指针，那么也有 2 种 Pin：<ul><li><strong>Pin&lt;&amp;mut T&gt;</strong>：但这种坑多，使用起来需要很小心，<strong>先不推荐使用这种 Pin</strong><li><strong>Pin&lt;Box&lt;T»</strong>：可以使用标准库 Box::pin 函数来构建。得到一个在 heap 上的 T 的值，然后这个值被 Pin 屏蔽住，<strong>重点推荐使用这种 Pin</strong></ul></ul><h2 id="三-unpin-and-unpin"><span class="mr-2">三. Unpin and !Unpin</span><a href="#三-unpin-and-unpin" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2></h2><p>上一节已经说明了通过 Pin 机制，可以把「不可移动」的类型 T 封装到 Pin 中，这样就没有办法获取到 T 的 ownership 或者 &amp;mut T（独占指针），进而保证不能对 T 进行 move。</p><p>但实际上 Pin 是和 Unpin trait 组合在一起使用的，所以还需要详细介绍 Unpin（以及 !Unpin）的概念。</p><blockquote><p>Unpin trait 是一种 <a href="https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits"><strong>auto trait</strong></a>。简单点说，Rust 中的各种类型，要么实现了 Unpin，要么实现了 !Unpin（事实上，Rust 中大多数类型都已经默认实现了 Unpin trait）。</p></blockquote><p>配合 Unpin 和 !Unpin，Pin 的使用<strong>原则</strong>如下：</p><p>【原则一】：</p><blockquote><p><strong>Unpin Types can be safely moved after being pinned</strong>。</p><p>如果类型 T 是「可移动」类型，那么需要给该类型 T 实现 Unpin trait。</p><p>一旦类型 T 实现了 Unpin trait，那么即使用 Pin 包住这个类型 T（例如 Pin&lt;&amp;mut T&gt;），也不会对 T 有屏蔽效果。</p><p>依旧可以从 Pin 中拿到 T 的 ownership 或者 &amp;mut T（独占指针），并进行 move。</p></blockquote><p>【原则二】：</p><blockquote><p><strong>Guarantee that an object implementing !Unpin won’t ever be moved</strong>。</p><p>只有当 Pin 包住的类型 T（例如 Pin&lt;Box&lt;T» 中的 T）实现了 !Unpin trait，才无法获取到 T 的 ownership 或者 &amp;mut T（独占指针），从而达到了对 T 的屏蔽效果，没办法对类型 T 进行 move。</p></blockquote><p>【原则三】：</p><blockquote><p>一个 struct 类型 T 只要有一个 field 是 !Unpin 的，这个 struct 类型 T 就是 !Unpin 的。</p></blockquote><p>而 Rust 中绝大多数正常类型，都是「可移动」的，默认都已经实现了 Unpin。</p><p>比如 String 类型，也已经默认实现了 Unpin。按照上面的【原则一】，即使被 Pin 包住，也不会并屏蔽，可以使用多种方法从 Pin 中拿到 String 进行操作:</p><div class="language-rust highlighter-rouge"><div class="code-header"> <span data-label-text="Rust"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+</pre><td class="rouge-code"><pre><span class="nd">#![allow(unused)]</span>
+
+<span class="k">fn</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">string</span> <span class="o">=</span> <span class="s">"Pinned?"</span><span class="nf">.to_string</span><span class="p">();</span>
+
+    <span class="c1">// 构建 Pin&lt;&amp;mut T&gt;</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">pinned</span><span class="p">:</span> <span class="nb">Pin</span><span class="o">&lt;&amp;</span><span class="k">mut</span> <span class="nb">String</span><span class="o">&gt;</span> <span class="o">=</span> <span class="nn">Pin</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="n">string</span><span class="p">);</span>
+    <span class="c1">// String 实现了 Unpin，所以不会被 Pin 屏蔽</span>
+    <span class="c1">// 可以直接从 Pin&lt;&amp;mut T&gt; 拿到内部真正的 T String，进行操作</span>
+    <span class="n">pinned</span><span class="nf">.push_str</span><span class="p">(</span><span class="s">" Not"</span><span class="p">);</span>
+
+    <span class="c1">// 也提供了 Pin::into_inner 方法来返回指针 P（相当于可以把外层包的 Pin 去掉）</span>
+    <span class="nn">Pin</span><span class="p">::</span><span class="nf">into_inner</span><span class="p">(</span><span class="n">pinned</span><span class="p">)</span><span class="nf">.push_str</span><span class="p">(</span><span class="s">" so much."</span><span class="p">);</span>
+
+    <span class="c1">// 可成功进行 move</span>
+    <span class="k">let</span> <span class="n">new_home</span> <span class="o">=</span> <span class="n">string</span><span class="p">;</span>
+    <span class="nd">assert_eq!</span><span class="p">(</span><span class="n">new_home</span><span class="p">,</span> <span class="s">"Pinned? Not so much."</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></table></code></div></div><blockquote><p><strong>NOTE：</strong> 甚至 Pin（一个 struct 类型）本身也自动实现了 Unpin。</p><p>利用 Pin 来限制「不可移动」的 T（T 需要实现 !Unpin），但 Pin 本身并没有实现 !Unpin 的必要。</p></blockquote><p>在 Rust 中，真正实现了 !Unpin trait 的只有 2 个类型（这里只先提一下，下一节会详细讲）：</p><ul><li>Future 转换为状态机时，编译器生成 <strong>Self-Referential Structs</strong> 来保存状态机上下文数据，编译器会给这些 <strong>Self-Referential Structs</strong> 实现 !Unpin trait<li>标准库中的 std::marker::PhantomPinned 类型也实现了 !Unpin trait</ul><h2 id="四-future-and-pin"><span class="mr-2">四. Future and Pin</span><a href="#四-future-and-pin" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2></h2><ul><li>Rust 里面，使用 Future 来描述一个状态机<li>编译器把 async fn 或 async block 转换为状态机代码时，使用到了 <strong>Self-Referential Structs</strong><li>后续使用该 Future 的人如果不小心对这个 Future 进行了 move，就会出问题（引起「未定义行为」）<li>所以需要使用 Pin 机制来保证 Future 的安全（不会被 move）</ul><p>先简单举例说明怎么把异步代码（async fn 或 async block）转换为状态机（更多细节请参考：<a href="https://os.phil-opp.com/async-await/#the-async-await-pattern">The Async/Await Pattern</a>）。</p><p>这里举个 async block 的简单例子：</p><div class="language-rust highlighter-rouge"><div class="code-header"> <span data-label-text="Rust"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre><td class="rouge-code"><pre><span class="nd">#![allow(unused)]</span>
+
+<span class="k">fn</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">async</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="k">mut</span> <span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">;</span> <span class="mi">128</span><span class="p">];</span>
+        <span class="k">let</span> <span class="n">read_into_buf_fut</span> <span class="o">=</span> <span class="nf">read_into_buf</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="n">x</span><span class="p">);</span>
+        <span class="n">read_into_buf_fut</span><span class="k">.await</span><span class="p">;</span>
+        <span class="nd">println!</span><span class="p">(</span><span class="s">"{:?}"</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></table></code></div></div><p>编译器对这个 async block 生成状态机：</p><ul><li>构建一个有 3 个状态的状态机：StartState，WaitingOnReadState，EndState<li>对每个状态，需要定义对应的 struct 来保存该状态的上下文信息：</ul><div class="language-rust highlighter-rouge"><div class="code-header"> <span data-label-text="Rust"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre><td class="rouge-code"><pre><span class="c1">// 整个 async block 被转换为一个 future： </span>
+<span class="k">struct</span> <span class="n">AsyncFuture</span> <span class="p">{</span>
+    <span class="c1">// future 中包括了 async block 内部使用到的数据：</span>
+    <span class="n">x</span><span class="p">:</span> <span class="p">[</span><span class="nb">u8</span><span class="p">;</span> <span class="mi">128</span><span class="p">],</span>
+
+    <span class="c1">// future 中也需要包含状态机工作时，每个状态的上下文信息（只有记录了每个状态的上下文信息，状态机才能被不断推进）</span>
+    <span class="c1">// 本例子中，我们只重点关心 WaitingOnReadState 状态的上下文</span>
+    <span class="n">waiting_on_read_state</span><span class="p">:</span> <span class="n">WaitingOnReadState</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1">// 定义一个 WaitingOnReadState 状态的上下文信息的 struct</span>
+<span class="k">struct</span> <span class="n">WaitingOnReadState</span><span class="o">&lt;</span><span class="nv">'a</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="c1">// 指向了 AsyncFuture 的 `x` 字段，所以 AsyncFuture 是一个 Self-Referential Struct</span>
+    <span class="n">buf</span><span class="p">:</span> <span class="o">&amp;</span><span class="nv">'a</span> <span class="k">mut</span> <span class="p">[</span><span class="nb">u8</span><span class="p">],</span>
+<span class="p">}</span>
+</pre></table></code></div></div><p>可以看出，async block 的状态机的底层实现中，会把 Future 实现为 <strong>Self-Referential Structs</strong>（自引用 struct），只能利用 Pin 机制来防止使用 Future 的人对 Future 进行 move。</p><h2 id="五-进阶内容"><span class="mr-2">五. 进阶内容</span><a href="#五-进阶内容" class="anchor text-muted"><i class="fas fa-hashtag"></i></a></h2></h2><p>本节深入更多 Future 和 Pin 的工作细节，有兴趣的可以看看（主要是参考了 <a href="https://fasterthanli.me/articles/pin-and-suffering">Pin and suffering</a> 的内容，也可以直接去看原文）。</p><p>Future trait 真实定义如下：</p><div class="language-rust highlighter-rouge"><div class="code-header"> <span data-label-text="Rust"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre><td class="rouge-code"><pre><span class="nd">#![allow(unused)]</span>
+
+<span class="k">fn</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">use</span> <span class="nn">std</span><span class="p">::</span><span class="nn">pin</span><span class="p">::</span><span class="nb">Pin</span><span class="p">;</span>
+    <span class="k">use</span> <span class="nn">std</span><span class="p">::</span><span class="nn">task</span><span class="p">::{</span><span class="n">Context</span><span class="p">,</span> <span class="n">Poll</span><span class="p">};</span>
+
+    <span class="k">pub</span> <span class="k">trait</span> <span class="n">Future</span> <span class="p">{</span>
+        <span class="k">type</span> <span class="n">Output</span><span class="p">;</span>
+
+        <span class="k">fn</span> <span class="nf">poll</span><span class="p">(</span><span class="k">self</span><span class="p">:</span> <span class="nb">Pin</span><span class="o">&lt;&amp;</span><span class="k">mut</span> <span class="k">Self</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">cx</span><span class="p">:</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">Context</span><span class="p">)</span>
+                <span class="k">-&gt;</span> <span class="n">Poll</span><span class="o">&lt;</span><span class="k">Self</span><span class="p">::</span><span class="n">Output</span><span class="o">&gt;</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></table></code></div></div><p>详解：</p><ul><li><strong>Output</strong> 是 Future 执行完成后返回的值的类型<li>开始调用 poll() 方法之前，必须先用一个 Pin 类型把 Future 包装起来才能调用 poll() 方法<ul><li><strong>用一个 Pin 类型把 Future 包装起来的目的是防止这个 Future 实例被 move</strong></ul><li>由第 3 方异步运行时库提供的 Executor 负责执行 Future：<ul><li>整个状态机由一个最外层 Future，和其它内部 Futures 一起组成<li>Executor 先做第一次 poll，启动状态机<li>Executor 会继续调用 poll，推进状态机，直到整个任务完成</ul></ul><p>但如果 Executor 通过循环重试的方式来不断 poll 效率太低。高效的方式是通过某种通知机制，当 Future 已经就绪时，才去做 poll。所以又引入了 Waker：</p><ul><li><p>当 Executor 调用 poll 的时候需要提供一个 <strong>Context</strong> 参数，这个 Context 参数就包含了 Waker</p><li><p>未来当 Future 完成时，可以获取到 Waker（waker = cx.waker()），然后调用 waker.wake() 来通知 Executor 执行 poll</p><li><p>具体 waker.wake() 要怎么通知，由 Executor 实现：</p><ul><li>一种可能的实现，就是调用 wake() 把就绪的任务加到<strong>就绪队列</strong>，Executor 消费<strong>就绪队列</strong>中已完成任务，进行 poll<li>实现要保证线程安全</ul></ul><p>先展示一个简单的，不断 wake Executor 做 poll 的例子：</p><div class="language-rust highlighter-rouge"><div class="code-header"> <span data-label-text="Rust"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+</pre><td class="rouge-code"><pre><span class="k">use</span> <span class="nn">std</span><span class="p">::{</span>
+    <span class="nn">future</span><span class="p">::</span><span class="n">Future</span><span class="p">,</span>
+    <span class="nn">pin</span><span class="p">::</span><span class="nb">Pin</span><span class="p">,</span>
+    <span class="nn">task</span><span class="p">::{</span><span class="n">Context</span><span class="p">,</span> <span class="n">Poll</span><span class="p">},</span>
+<span class="p">};</span>
+
+<span class="c1">// 这个例子中，我们使用 tokio 作为运行时来执行 Future</span>
+<span class="nd">#[tokio::main]</span>
+<span class="k">async</span> <span class="k">fn</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">let</span> <span class="n">fut</span> <span class="o">=</span> <span class="n">MyFuture</span> <span class="p">{};</span>
+    <span class="nd">println!</span><span class="p">(</span><span class="s">"Awaiting fut..."</span><span class="p">);</span>
+    <span class="n">fut</span><span class="k">.await</span><span class="p">;</span>
+    <span class="nd">println!</span><span class="p">(</span><span class="s">"Awaiting fut... done!"</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// 声明一个自己的 Future</span>
+<span class="k">struct</span> <span class="n">MyFuture</span> <span class="p">{}</span>
+
+<span class="c1">// 实现 Future trait</span>
+<span class="k">impl</span> <span class="n">Future</span> <span class="k">for</span> <span class="n">MyFuture</span> <span class="p">{</span>
+    <span class="c1">// 该 Future 返回 ()</span>
+    <span class="k">type</span> <span class="n">Output</span> <span class="o">=</span> <span class="p">();</span>
+
+    <span class="k">fn</span> <span class="nf">poll</span><span class="p">(</span><span class="k">self</span><span class="p">:</span> <span class="nb">Pin</span><span class="o">&lt;&amp;</span><span class="k">mut</span> <span class="k">Self</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">cx</span><span class="p">:</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">Context</span><span class="o">&lt;</span><span class="nv">'_</span><span class="o">&gt;</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="n">Poll</span><span class="o">&lt;</span><span class="k">Self</span><span class="p">::</span><span class="n">Output</span><span class="o">&gt;</span> <span class="p">{</span>
+        <span class="nd">println!</span><span class="p">(</span><span class="s">"MyFuture::poll()"</span><span class="p">);</span>
+        <span class="c1">// 如果没有 wake_by_ref() 的话，poll 就只会被调用一次</span>
+        <span class="c1">// 现在加上了 wake_by_ref()，每次 poll 时，会再次通知 Executor 进行下一次 poll，Executor 会再次调用 poll</span>
+        <span class="n">cx</span><span class="nf">.waker</span><span class="p">()</span><span class="nf">.wake_by_ref</span><span class="p">();</span>
+        <span class="c1">// 但该例子中，无论 poll 多少次都返回 Pending，不会返回 Ready：无限次调用 poll</span>
+        <span class="nn">Poll</span><span class="p">::</span><span class="n">Pending</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></table></code></div></div><p>执行以后的无限次 poll 的效果如下：</p><div class="language-shell highlighter-rouge"><div class="code-header"> <span data-label-text="Shell"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre><td class="rouge-code"><pre><span class="nv">$ </span>cargo run <span class="nt">--quiet</span>
+Awaiting fut...
+MyFuture::poll<span class="o">()</span>
+MyFuture::poll<span class="o">()</span>
+MyFuture::poll<span class="o">()</span>
+MyFuture::poll<span class="o">()</span>
+MyFuture::poll<span class="o">()</span>
+MyFuture::poll<span class="o">()</span>
+MyFuture::poll<span class="o">()</span>
+MyFutur^C
+</pre></table></code></div></div><p>然后再展示一个例子：启动一秒以后，能返回 Ready 的 Future：</p><div class="language-rust highlighter-rouge"><div class="code-header"> <span data-label-text="Rust"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+</pre><td class="rouge-code"><pre><span class="k">use</span> <span class="nn">tokio</span><span class="p">::</span><span class="nn">time</span><span class="p">::</span><span class="n">Sleep</span><span class="p">;</span>
+<span class="k">use</span> <span class="nn">tokio</span><span class="p">::</span><span class="nn">time</span><span class="p">::</span><span class="n">Duration</span><span class="p">;</span>
+<span class="k">use</span> <span class="nn">std</span><span class="p">::{</span>
+    <span class="nn">future</span><span class="p">::</span><span class="n">Future</span><span class="p">,</span>
+    <span class="nn">pin</span><span class="p">::</span><span class="nb">Pin</span><span class="p">,</span>
+    <span class="nn">task</span><span class="p">::{</span><span class="n">Context</span><span class="p">,</span> <span class="n">Poll</span><span class="p">},</span>
+<span class="p">};</span>
+
+<span class="nd">#[tokio::main]</span>
+<span class="k">async</span> <span class="k">fn</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">let</span> <span class="n">fut</span> <span class="o">=</span> <span class="nn">MyFuture</span><span class="p">::</span><span class="nf">new</span><span class="p">();</span>
+    <span class="nd">println!</span><span class="p">(</span><span class="s">"Awaiting fut..."</span><span class="p">);</span>
+    <span class="n">fut</span><span class="k">.await</span><span class="p">;</span>
+    <span class="nd">println!</span><span class="p">(</span><span class="s">"Awaiting fut... done!"</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">struct</span> <span class="n">MyFuture</span> <span class="p">{</span>
+    <span class="c1">// Sleep 是一个 Future，不能直接调用 poll()，</span>
+    <span class="c1">// 需要 Pin 和 Box 组合起来才能调用 poll（下面一个小节会详细说）</span>
+    <span class="n">sleep</span><span class="p">:</span> <span class="nb">Pin</span><span class="o">&lt;</span><span class="nb">Box</span><span class="o">&lt;</span><span class="n">Sleep</span><span class="o">&gt;&gt;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="k">impl</span> <span class="n">MyFuture</span> <span class="p">{</span>
+    <span class="k">fn</span> <span class="nf">new</span><span class="p">()</span> <span class="k">-&gt;</span> <span class="k">Self</span> <span class="p">{</span>
+        <span class="k">Self</span> <span class="p">{</span>
+            <span class="c1">// 使用 tokio 异步版本的 sleep</span>
+            <span class="c1">// Box::pin 创建一个 Pin&lt;Box&lt;T&gt;，如果 T 没有实现 Unpin 的话，Pin 成功</span>
+            <span class="c1">// 本例子 Pin&lt;Box&lt;Sleep&gt;&gt; 中的 Sleep 类型就是没有实现 Unpin 的类型</span>
+            <span class="n">sleep</span><span class="p">:</span> <span class="nn">Box</span><span class="p">::</span><span class="nf">pin</span><span class="p">(</span><span class="nn">tokio</span><span class="p">::</span><span class="nn">time</span><span class="p">::</span><span class="nf">sleep</span><span class="p">(</span><span class="nn">Duration</span><span class="p">::</span><span class="nf">from_secs</span><span class="p">(</span><span class="mi">1</span><span class="p">))),</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">impl</span> <span class="n">Future</span> <span class="k">for</span> <span class="n">MyFuture</span> <span class="p">{</span>
+    <span class="k">type</span> <span class="n">Output</span> <span class="o">=</span> <span class="p">();</span>
+
+    <span class="k">fn</span> <span class="nf">poll</span><span class="p">(</span><span class="k">mut</span> <span class="k">self</span><span class="p">:</span> <span class="nb">Pin</span><span class="o">&lt;&amp;</span><span class="k">mut</span> <span class="k">Self</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">cx</span><span class="p">:</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">Context</span><span class="o">&lt;</span><span class="nv">'_</span><span class="o">&gt;</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="n">Poll</span><span class="o">&lt;</span><span class="k">Self</span><span class="p">::</span><span class="n">Output</span><span class="o">&gt;</span> <span class="p">{</span>
+        <span class="nd">println!</span><span class="p">(</span><span class="s">"MyFuture::poll()"</span><span class="p">);</span>
+        <span class="c1">// 这个一个典型的惯用法：Future 的实现里面对另外一个 Future 进行 poll</span>
+        <span class="c1">//</span>
+        <span class="c1">// 因为异步版本的 sleep 内部实现了利用 waker 来通知 Executor</span>
+        <span class="c1">// 所以可以直接对异步版本的 sleep 进行 poll</span>
+        <span class="c1">//</span>
+        <span class="c1">// 异步版本的 sleep 的 poll()，需要 Pin 和 Box 组合起来调用 poll()</span>
+        <span class="k">self</span><span class="py">.sleep</span><span class="nf">.as_mut</span><span class="p">()</span><span class="nf">.poll</span><span class="p">(</span><span class="n">cx</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></table></code></div></div><p>执行效果如下：</p><div class="language-shell highlighter-rouge"><div class="code-header"> <span data-label-text="Shell"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre><td class="rouge-code"><pre><span class="nv">$ </span>cargo run <span class="nt">--quiet</span>
+Awaiting fut...
+MyFuture::poll<span class="o">()</span>
+这里会卡 1 秒
+MyFuture::poll<span class="o">()</span>
+Awaiting fut... <span class="k">done</span><span class="o">!</span>
+</pre></table></code></div></div><ul><li>另外一个之前例子没有覆盖的 Future 内部实现细节：每次 Executor 调用 poll 时，都会传入一个的 waker 参数；poll 的内部需要判断这次的 waker 和之前 poll 被调用时传入的 waker 的值是否匹配。代码大概如下：</ul><div class="language-rust highlighter-rouge"><div class="code-header"> <span data-label-text="Rust"><i class="fas fa-code small"></i></span> <button aria-label="copy" data-title-succeed="已复制！"><i class="far fa-clipboard"></i></button></div><div class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre><td class="rouge-code"><pre><span class="k">fn</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// 获取原先的 waker</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">waker</span> <span class="o">=</span> <span class="n">waker</span><span class="nf">.lock</span><span class="p">()</span><span class="nf">.unwrap</span><span class="p">();</span>
+    <span class="c1">// 判断原先的 waker 和本次调用传入的 waker 是否匹配</span>
+    <span class="k">if</span> <span class="o">!</span><span class="n">waker</span><span class="nf">.will_wake</span><span class="p">(</span><span class="n">cx</span><span class="nf">.waker</span><span class="p">())</span> <span class="p">{</span>
+        <span class="c1">// 如果不匹配，需要 clone 本次传入的值，并记录到 Future 内部</span>
+        <span class="o">*</span><span class="n">waker</span> <span class="o">=</span> <span class="n">cx</span><span class="nf">.waker</span><span class="p">()</span><span class="nf">.clone</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></table></code></div></div></div><div class="post-tail-wrapper text-muted"><div class="post-meta mb-3"> <i class="far fa-folder-open fa-fw mr-1"></i> <a href='/categories/%E7%BC%96%E7%A8%8B/'>编程</a></div><div class="post-tags"> <i class="fa fa-tags fa-fw mr-1"></i> <a href="/tags/rust/" class="post-tag no-text-decoration" >rust</a> <a href="/tags/pin/" class="post-tag no-text-decoration" >pin</a></div><div class="post-tail-bottom d-flex justify-content-between align-items-center mt-3 pt-5 pb-2"><div class="license-wrapper"> 本文由作者按照 <a href="https://creativecommons.org/licenses/by/4.0/"> CC BY 4.0 </a> 进行授权</div><div class="share-wrapper"> <span class="share-label text-muted mr-1">分享</span> <span class="share-icons"> <a href="https://twitter.com/intent/tweet?text=Pin - Etaws&amp;url=https://etaws.github.io/posts/pin-notes/" data-toggle="tooltip" data-placement="top" title="Twitter" target="_blank" rel="noopener" aria-label="Twitter"> <i class="fa-fw fab fa-twitter"></i> </a> <a href="https://www.facebook.com/sharer/sharer.php?title=Pin - Etaws&amp;u=https://etaws.github.io/posts/pin-notes/" data-toggle="tooltip" data-placement="top" title="Facebook" target="_blank" rel="noopener" aria-label="Facebook"> <i class="fa-fw fab fa-facebook-square"></i> </a> <a href="https://t.me/share/url?url=https://etaws.github.io/posts/pin-notes/&amp;text=Pin - Etaws" data-toggle="tooltip" data-placement="top" title="Telegram" target="_blank" rel="noopener" aria-label="Telegram"> <i class="fa-fw fab fa-telegram"></i> </a> <i id="copy-link" class="fa-fw fas fa-link small" data-toggle="tooltip" data-placement="top" title="分享链接" data-title-succeed="链接已复制！"> </i> </span></div></div></div></div></div><div id="panel-wrapper" class="col-xl-3 pl-2 text-muted"><div class="access"><div id="access-lastmod" class="post"><div class="panel-heading">最近更新</div><ul class="post-content pl-0 pb-1 ml-1 mt-2"><li><a href="/posts/poker-notes/">Poker</a><li><a href="/posts/video-notes/">拍摄视频</a><li><a href="/posts/Jekyll-Chirpy-notes/">Jekyll-Chirpy notes</a><li><a href="/posts/coff-notes/">制作咖啡</a><li><a href="/posts/pin-notes/">Pin</a></ul></div><div id="access-tags"><div class="panel-heading">热门标签</div><div class="d-flex flex-wrap mt-3 mb-1 mr-3"> <a class="post-tag" href="/tags/chirpy/">chirpy</a> <a class="post-tag" href="/tags/coffee/">coffee</a> <a class="post-tag" href="/tags/jekyll/">jekyll</a> <a class="post-tag" href="/tags/pin/">pin</a> <a class="post-tag" href="/tags/poker/">poker</a> <a class="post-tag" href="/tags/rust/">rust</a> <a class="post-tag" href="/tags/video/">video</a></div></div></div><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@1.0.1/dist/bootstrap-toc.min.js"></script><div id="toc-wrapper" class="pl-0 pr-4 mb-5"><div class="panel-heading pl-3 pt-2 mb-2">文章内容</div><nav id="toc" data-toggle="toc"></nav></div></div></div><div class="row"><div class="col-12 col-lg-11 col-xl-8"><div id="tail-wrapper" class="pl-1 pr-1 pl-sm-2 pr-sm-2 pl-md-4 pr-md-4"><div id="related-posts" class="mt-5 mb-2 mb-sm-4"><h3 class="pt-2 mt-1 mb-4 ml-1" data-toc-skip>相关文章</h3><div class="card-deck mb-4"><div class="card"> <a href="/posts/coff-notes/"><div class="card-body"> <em class="timeago small" data-ts="1648119840" > 2022-03-24 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>制作咖啡</h3><div class="text-muted small"><p> 一. 利用「聪明杯」制作咖啡 1. 方法一 把咖啡豆磨成「咖啡粉」。粒度大概类似「白糖」的粒度； 水用 90 度左右的水； 折叠好滤纸，放入「聪明杯」，并打湿滤纸； 先放入「咖啡粉」； 再倒入水； 等待 3 分半的时间； 开阀门，等待过滤完成； 2. 方法二 把咖啡豆（大概 13 克左右）磨成「咖啡粉」。粒度大概类似「白糖」的粒度； 水用 9...</p></div></div></a></div><div class="card"> <a href="/posts/video-notes/"><div class="card-body"> <em class="timeago small" data-ts="1647997200" > 2022-03-23 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>拍摄视频</h3><div class="text-muted small"><p> 重点： 镜头运动 景别 焦距/景深 摄像机角度（眼平，低，高。。。） Framing（过肩，单人，双人，POV。。。） 一. 基本镜头运动 原则 通过镜头运动来进行表达是重要的。通过反复观看影片中最有感染力的片段来分析并学习镜头的运动。 【重要】：场景序列不能有任何间断，不能让被拍摄的人物的联接中断（也就是镜头运动不能脱离...</p></div></div></a></div><div class="card"> <a href="/posts/poker-notes/"><div class="card-body"> <em class="timeago small" data-ts="1647910800" > 2022-03-22 </em><h3 class="pt-0 mt-1 mb-3" data-toc-skip>Poker</h3><div class="text-muted small"><p> 名词解释 策略（Strategy） 在每种给定的条件下，玩家对应的采用对应的行动 纯策略 vs. 混合策略：在给定的条件下，如果采用纯策略，就总是采用相同的行动；而如果采用混合策略，在给定的条件下，会采用不同的行动； 均衡（Equilibrium） 当多个玩家达到均衡状态后，只有单个玩家改变策略不可能提升其收...</p></div></div></a></div></div></div><div class="post-navigation d-flex justify-content-between"> <a href="/posts/coff-notes/" class="btn btn-outline-primary" prompt="上一篇"><p>制作咖啡</p></a> <span class="btn btn-outline-primary disabled" prompt="下一篇"><p>-</p></span></div></div></div></div><footer class="d-flex w-100 justify-content-center"><div class="d-flex justify-content-between align-items-center text-muted"><div class="footer-left"><p class="mb-0"> © 2023 <a href="https://github.com/etaws">etaws</a>. <span data-toggle="tooltip" data-placement="top" title="除非另有说明，本网站上的博客文章均由作者按照知识共享署名 4.0 国际 (CC BY 4.0) 许可协议进行授权。">保留部分权利。</span></p></div><div class="footer-right"><p class="mb-0"> 本站由 <a href="https://jekyllrb.com" target="_blank" rel="noopener">Jekyll</a> 生成，采用 <a href="https://github.com/cotes2020/jekyll-theme-chirpy" target="_blank" rel="noopener">Chirpy</a> 主题。</p></div></div></footer></div><div id="search-result-wrapper" class="d-flex justify-content-center unloaded"><div class="col-12 col-sm-11 post-content"><div id="search-hints"><div id="access-tags"><div class="panel-heading">热门标签</div><div class="d-flex flex-wrap mt-3 mb-1 mr-3"> <a class="post-tag" href="/tags/chirpy/">chirpy</a> <a class="post-tag" href="/tags/coffee/">coffee</a> <a class="post-tag" href="/tags/jekyll/">jekyll</a> <a class="post-tag" href="/tags/pin/">pin</a> <a class="post-tag" href="/tags/poker/">poker</a> <a class="post-tag" href="/tags/rust/">rust</a> <a class="post-tag" href="/tags/video/">video</a></div></div></div><div id="search-results" class="d-flex flex-wrap justify-content-center text-muted mt-3"></div></div></div></div><div id="mask"></div><a id="back-to-top" href="#" aria-label="back-to-top" class="btn btn-lg btn-box-shadow" role="button"> <i class="fas fa-angle-up"></i> </a> <script src="https://cdn.jsdelivr.net/npm/simple-jekyll-search@1.10.0/dest/simple-jekyll-search.min.js"></script> <script> SimpleJekyllSearch({ searchInput: document.getElementById('search-input'), resultsContainer: document.getElementById('search-results'), json: '/assets/js/data/search.json', searchResultTemplate: '<div class="pl-1 pr-1 pl-sm-2 pr-sm-2 pl-lg-4 pr-lg-4 pl-xl-0 pr-xl-0"> <a href="{url}">{title}</a><div class="post-meta d-flex flex-column flex-sm-row text-muted mt-1 mb-1"> {categories} {tags}</div><p>{snippet}</p></div>', noResultsText: '<p class="mt-5">搜索结果为空</p>', templateMiddleware: function(prop, value, template) { if (prop === 'categories') { if (value === '') { return `${value}`; } else { return `<div class="mr-sm-4"><i class="far fa-folder fa-fw"></i>${value}</div>`; } } if (prop === 'tags') { if (value === '') { return `${value}`; } else { return `<div><i class="fa fa-tag fa-fw"></i>${value}</div>`; } } } }); </script> <script src="https://cdn.jsdelivr.net/combine/npm/magnific-popup@1/dist/jquery.magnific-popup.min.js,npm/lozad/dist/lozad.min.js,npm/clipboard@2/dist/clipboard.min.js"></script> <script src="https://cdn.jsdelivr.net/combine/npm/dayjs@1/dayjs.min.js,npm/dayjs@1/locale/zh.min.js,npm/dayjs@1/plugin/relativeTime.min.js,npm/dayjs@1/plugin/localizedFormat.min.js"></script> <script defer src="/assets/js/dist/post.min.js"></script> <script src="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/js/bootstrap.bundle.min.js"></script> <script defer src="/app.js"></script>
